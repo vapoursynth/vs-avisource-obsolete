@@ -1,8 +1,6 @@
 /*
 * Copyright (c) 2012-2017 Fredrik Mellbin
 *
-* This file is part of VapourSynth.
-*
 * VapourSynth is free software; you can redistribute it and/or
 * modify it under the terms of the GNU Lesser General Public
 * License as published by the Free Software Foundation; either
@@ -24,16 +22,23 @@
 #include <stdexcept>
 #include "stdafx.h"
 
-#include "VapourSynth4.h"
-#include "VSHelper4.h"
+#include <VapourSynth4.h>
+#include <VSHelper4.h>
 #include "AVIReadHandler.h"
-#include "../../core/version.h"
-#include "../../common/p2p_api.h"
-#include "../../common/fourcc.h"
-#include "../../common/vsutf16.h"
+#include "libp2p/p2p_api.h"
+#include "vsutf16.h"
 #include <vd2/system/error.h>
 
+#define VS_FCC(ch4) ((((unsigned long)(ch4) & 0xFF) << 24) |     \
+                  (((unsigned long)(ch4) & 0xFF00) << 8) |    \
+                  (((unsigned long)(ch4) & 0xFF0000) >> 8) |  \
+                  (((unsigned long)(ch4) & 0xFF000000) >> 24))
+
 using namespace vsh;
+
+static inline int BMPSizeHelper(int height, int rowsize) {
+    return height * ((rowsize + 3) & ~3);
+}
 
 static int ImageSize(const VSVideoInfo *vi, DWORD fourcc, int bitcount = 0) {
     int image_size;
@@ -761,7 +766,7 @@ const VSFrame *AVISource::GetFrame(int n, VSFrameContext *frameCtx, VSCore *core
 // Init
 
 VS_EXTERNAL_API(void) VapourSynthPluginInit2(VSPlugin *plugin, const VSPLUGINAPI *vspapi) {
-    vspapi->configPlugin("com.vapoursynth.avisource", "avisource", "VapourSynth AVISource Port", VAPOURSYNTH_INTERNAL_PLUGIN_VERSION, VAPOURSYNTH_API_VERSION, 0, plugin);
+    vspapi->configPlugin("com.vapoursynth.avisource", "avisource", "VapourSynth AVISource", VS_MAKE_VERSION(1, 0), VAPOURSYNTH_API_VERSION, 0, plugin);
     const char *args = "path:data[];pixel_type:data:opt;fourcc:data:opt;alpha:int:opt;";
     const char *retArgs = "clip:vnode;";
     vspapi->registerFunction("AVISource", args, retArgs, AVISource::create_AVISource, reinterpret_cast<void *>(AVISource::MODE_NORMAL), plugin);
