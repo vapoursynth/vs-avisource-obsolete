@@ -192,7 +192,6 @@ class AVISource {
     bool output_alpha;
 
     VSFrame *last_frame;
-    VSFrame *last_alpha_frame;
     int last_frame_no;
 
     LRESULT DecompressBegin(LPBITMAPINFOHEADER lpbiSrc, LPBITMAPINFOHEADER lpbiDst);
@@ -499,7 +498,7 @@ void AVISource::LocateVideoCodec(const char fourCC[], VSCore *core, const VSAPI 
 
 
 AVISource::AVISource(const char filename[], const char pixel_type[], const char fourCC[], bool output_alpha, int mode, VSCore *core, const VSAPI *vsapi)
-    : output_alpha(output_alpha), last_frame_no(-1), last_frame(nullptr), last_alpha_frame(nullptr), srcbuffer(nullptr), srcbuffer_size(0), ex(false), pbiSrc(nullptr),
+    : output_alpha(output_alpha), last_frame_no(-1), last_frame(nullptr), srcbuffer(nullptr), srcbuffer_size(0), ex(false), pbiSrc(nullptr),
     pvideo(nullptr), pfile(nullptr), bIsType1(false), hic(0), bInvertFrames(false), decbuf(nullptr)  {
     vi[0] = {};
     vi[1] = {};
@@ -671,9 +670,10 @@ AVISource::AVISource(const char filename[], const char pixel_type[], const char 
                 }
             }
 
-            last_frame_no=0;
-            last_frame=frame;
-            last_alpha_frame = alpha_frame;
+            last_frame_no = 0;
+            if (output_alpha)
+                vsapi->mapConsumeFrame(vsapi->getFramePropertiesRW(frame), "_Alpha", alpha_frame, maAppend);
+            last_frame = frame;
         }
     } catch (std::runtime_error &) {
         AVISource::CleanUp(vsapi);
@@ -698,7 +698,6 @@ void AVISource::CleanUp(const VSAPI *vsapi) {
     vsh_aligned_free(decbuf);
 
     vsapi->freeFrame(last_frame);
-    vsapi->freeFrame(last_alpha_frame);
 }
 
 const VSFrame *AVISource::GetFrame(int n, VSFrameContext *frameCtx, VSCore *core, const VSAPI *vsapi) {
@@ -727,14 +726,12 @@ const VSFrame *AVISource::GetFrame(int n, VSFrameContext *frameCtx, VSCore *core
                 if ((!dropped_frame) && (error == ICERR_OK))
                     frameok = true;   // Better safe than sorry
                 if (frameok) {
+                    if (output_alpha)
+                        vsapi->mapConsumeFrame(vsapi->getFramePropertiesRW(frame), "_Alpha", alpha_frame, maAppend);
                     vsapi->freeFrame(last_frame);
                     last_frame = frame;
                     frame = nullptr;
-                    vsapi->freeFrame(last_alpha_frame);
-                    last_alpha_frame = alpha_frame;
                     alpha_frame = nullptr;
-                    if (output_alpha)
-                        vsapi->mapSetFrame(vsapi->getFramePropertiesRW(last_frame), "_Alpha", last_alpha_frame, maAppend);
                 }
 
                 if (last_frame && i != n) {
