@@ -671,8 +671,10 @@ AVISource::AVISource(const char filename[], const char pixel_type[], const char 
             }
 
             last_frame_no = 0;
-            if (output_alpha)
+            if (output_alpha) {
+                vsapi->mapSetInt(vsapi->getFramePropertiesRW(alpha_frame), "_ColorRange", 0, maReplace);
                 vsapi->mapConsumeFrame(vsapi->getFramePropertiesRW(frame), "_Alpha", alpha_frame, maAppend);
+            }
             last_frame = frame;
         }
     } catch (std::runtime_error &) {
